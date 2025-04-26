@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 import pickle
-
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
 def sigmoid(z):
     """Sigmoid activation with overflow protection."""
@@ -27,6 +29,8 @@ def compute_loss(y_true, y_pred):
 def train(X, y, weights, bias, learning_rate=0.001, epochs=1000):
     """Train the logistic regression model."""
     m = X.shape[0]
+    loss_history = []  # Track loss for plotting
+    accuracy_history = []  # Track accuracy for plotting
     for i in range(epochs):
         y_pred = predict(X, weights, bias)
         dw = (1/m) * np.dot(X.T, (y_pred - y))
@@ -35,11 +39,14 @@ def train(X, y, weights, bias, learning_rate=0.001, epochs=1000):
         weights -= learning_rate * dw
         bias -= learning_rate * db
         
+        # Save loss and accuracy for visualization
+        loss_history.append(compute_loss(y, y_pred))
+        accuracy_history.append(np.mean(predict_classes(X, weights, bias) == y) * 100)
+        
         if i % 100 == 0:
-            loss = compute_loss(y, y_pred)
-            print(f"Epoch {i}, Loss: {loss:.4f}")
+            print(f"Epoch {i}, Loss: {loss_history[-1]:.4f}")
     
-    return weights, bias
+    return weights, bias, loss_history, accuracy_history
 
 
 # Load dataset
@@ -69,24 +76,56 @@ X = (X - X.mean()) / X.std()
 X = np.nan_to_num(X)
 y = np.nan_to_num(y.values.reshape(-1, 1))
 
-
 np.random.seed(42)
 weights = np.random.randn(X.shape[1], 1) * 0.001
 bias = 0
 
 
-weights, bias = train(X, y, weights, bias, learning_rate=0.001, epochs=1000)
+weights, bias, loss_history, accuracy_history = train(X, y, weights, bias, learning_rate=0.001, epochs=1000)
 
 # Save model
 with open('mindscope_model.pkl', 'wb') as f:
     pickle.dump((weights, bias), f)
 
-print("\n Model trained and saved successfully!")
+print("\nModel trained and saved successfully!")
 
 # Evaluate
 predictions = predict_classes(X, weights, bias)
 accuracy = np.mean(predictions == y) * 100
 print(f"MindScope Model Accuracy: {accuracy:.2f}% 🚀")
+
+# ------------------------------------------
+# Visualization
+# ------------------------------------------
+
+# Loss curve
+plt.figure(figsize=(12, 6))
+plt.plot(range(len(loss_history)), loss_history, label='Loss')
+plt.title('Training Loss Curve')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# Accuracy curve
+plt.figure(figsize=(12, 6))
+plt.plot(range(len(accuracy_history)), accuracy_history, label='Accuracy', color='orange')
+plt.title('Training Accuracy Curve')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy (%)')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# Confusion Matrix
+cm = confusion_matrix(y, predictions)
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt="d", cmap='Blues', xticklabels=['No Depression', 'Depression'], yticklabels=['No Depression', 'Depression'])
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
 
 # ------------------------------------------
 # User Interaction for Prediction
